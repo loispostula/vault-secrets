@@ -1,5 +1,5 @@
 {
-  description = "Serokell Vault Tooling";
+  description = "Serokell Openbao Tooling";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -9,22 +9,25 @@
     };
   };
 
-  outputs = { self, nixpkgs, ... }@inputs:
+  outputs =
+    { self, nixpkgs, ... }@inputs:
     let
-      forSystems = nixpkgs.lib.genAttrs [ "x86_64-linux" ];
+      forSystems = nixpkgs.lib.genAttrs [
+        "x86_64-linux"
+        "aarch64-darwin"
+      ];
     in
     {
       overlays.default = final: prev: {
-        vault-push-approles =
-          final.callPackage ./scripts/vault-push-approles.nix { };
-        vault-push-approle-envs =
-          final.callPackage ./scripts/vault-push-approle-envs.nix { };
+        openbao-push-approles = final.callPackage ./scripts/openbao-push-approles.nix { };
+        openbao-push-approle-envs = final.callPackage ./scripts/openbao-push-approle-envs.nix { };
       };
 
-      nixosModules.vault-secrets = import ./modules/vault-secrets.nix;
-      darwinModules.vault-secrets = import ./modules/vault-secrets-darwin.nix;
+      nixosModules.openbao-secrets = import ./modules/openbao-secrets.nix;
+      darwinModules.openbao-secrets = import ./modules/openbao-secrets-darwin.nix;
 
-      checks = forSystems (system:
+      checks = forSystems (
+        system:
         let
           tests = import ./tests/modules/all-tests.nix {
             pkgs = nixpkgs.legacyPackages.${system};
@@ -33,10 +36,11 @@
             nixosPath = "${nixpkgs}/nixos";
           };
         in
-        { inherit (tests) vault-secrets; });
+        {
+          inherit (tests) openbao-secrets;
+        }
+      );
 
-      legacyPackages = forSystems (system:
-        nixpkgs.legacyPackages.${system}.extend
-          self.overlays.default);
+      legacyPackages = forSystems (system: nixpkgs.legacyPackages.${system}.extend self.overlays.default);
     };
 }
